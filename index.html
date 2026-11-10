@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI23 — Interactive 3D Mesh & Reference Viewer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Dual-pane layout for side-by-side comparison */
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+        /* Left Pane: Reference Drawings */
+        #reference-pane {
+            width: 35%;
+            height: 100%;
+            background-color: #1e1e1e;
+            border-right: 2px solid #333333;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        #reference-pane h2 {
+            font-size: 1.2rem;
+            color: #4da6ff;
+            border-bottom: 1px solid #333333;
+            padding-bottom: 8px;
+        }
+        .reference-card {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .reference-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+        .reference-card span {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.85rem;
+            color: #aaaaaa;
+        }
+        /* Right Pane: Three.js Interactive Viewer */
+        #viewer-pane {
+            width: 65%;
+            height: 100%;
+            position: relative;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        /* Loading Overlay */
+        #loading-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        /* UI Control Info Overlay */
+        #controls-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(30, 30, 30, 0.85);
+            backdrop-filter: blur(4px);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #cccccc;
+            border: 1px solid #444444;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- Import Three.js and ESM dependencies via ES Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Reference Drawings Side Panel -->
+        <div id="reference-pane">
+            <h2>Reference Drawings</h2>
+            <div class="reference-card">
+                <img src="front_reference.png" alt="Front Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Front+View+Reference'">
+                <span>Front View</span>
+            </div>
+            <div class="reference-card">
+                <img src="side_reference.png" alt="Side Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Side+View+Reference'">
+                <span>Side View</span>
+            </div>
+            <div class="reference-card">
+                <img src="rear_reference.png" alt="Rear Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Rear+View+Reference'">
+                <span>Rear View</span>
+            </div>
+        </div>
+
+        <!-- Interactive 3D Canvas -->
+        <div id="viewer-pane">
+            <div id="canvas-container"></div>
+            <div id="loading-overlay">Loading model: <strong>little_boy_masked.glb</strong>...</div>
+            <div id="controls-info">
+                <strong>Controls:</strong><br>
+                • Rotate/Orbit: Left-Click + Drag<br>
+                • Pan: Right-Click + Drag<br>
+                • Zoom: Scroll Wheel
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // 1. Scene, Camera, Renderer Setup
+        const container = document.getElementById('canvas-container');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a1a);
+
+        const camera = new THREE.PerspectiveCamera(
+            45, 
+            container.clientWidth / container.clientHeight, 
+            0.1, 
+            1000
+        );
+        camera.position.set(0, 1.5, 4);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        container.appendChild(renderer.domElement);
+
+        // 2. Camera Controls (Orbit, Zoom, Pan enabled)
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;   // Zoom
+        controls.enablePan = true;    // Pan
+        controls.enableRotate = true; // Orbit
+
+        // 3. Lighting Setup
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        mainLight.position.set(5, 10, 7.5);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        fillLight.position.set(-5, 0, -5);
+        scene.add(fillLight);
+
+        // Grid floor helper for spatial orientation
+        const gridHelper = new THREE.GridHelper(10, 10, 0x4da6ff, 0x444444);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+
+        // 4. Load GLB Mesh Model
+        const loader = new GLTFLoader();
+        const modelPath = 'little_boy_masked.glb'; // Path to target GLB mesh
+
+        loader.load(
+            modelPath,
+            (gltf) => {
+                const model = gltf.scene;
+
+                // Center and scale mesh automatically
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                model.position.x += (model.position.x - center.x);
+                model.position.y += (model.position.y - center.y);
+                model.position.z += (model.position.z - center.z);
+
+                // Offset model so it rests on the grid
+                model.position.y += size.y / 2;
+
+                scene.add(model);
+
+                // Focus controls target at the model center
+                controls.target.set(0, size.y / 2, 0);
+                controls.update();
+
+                // Hide loading overlay
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 300);
+            },
+            (xhr) => {
+                // Loading progress callback
+                if (xhr.lengthComputable) {
+                    const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+                    loadingOverlay.innerHTML = `Loading model: <strong>little_boy_masked.glb</strong> (${percentComplete}%)`;
+                }
+            },
+            (error) => {
+                console.error('An error occurred while loading the GLB model:', error);
+                loadingOverlay.innerHTML = `<span style="color: #ff4d4d;">Failed to load little_boy_masked.glb</span>`;
+            }
+        );
+
+        // 5. Responsive Resize Handling
+        window.addEventListener('resize', () => {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(width, height);
+        });
+
+        // 6. Animation / Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Required for smooth damping
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
