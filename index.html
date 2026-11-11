@@ -3,102 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI23 — Interactive 3D Mesh & Reference Viewer</title>
+    <title>Interactive 3D Mesh & Reference Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --bg-dark: #0f1117;
+            --panel-bg: rgba(22, 26, 36, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
         }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #121212;
-            color: #ffffff;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
             height: 100vh;
             overflow: hidden;
-        }
-        /* Dual-pane layout for side-by-side comparison */
-        #app-container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-        /* Left Pane: Reference Drawings */
-        #reference-pane {
-            width: 35%;
-            height: 100%;
-            background-color: #1e1e1e;
-            border-right: 2px solid #333333;
-            padding: 20px;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
         }
-        #reference-pane h2 {
-            font-size: 1.2rem;
-            color: #4da6ff;
-            border-bottom: 1px solid #333333;
-            padding-bottom: 8px;
+
+        /* Top Navigation Header */
+        header {
+            height: 56px;
+            background: rgba(15, 17, 23, 0.9);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 10;
         }
-        .reference-card {
-            background-color: #2a2a2a;
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
         }
-        .reference-card img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 4px;
-            object-fit: contain;
+
+        .brand i {
+            color: var(--accent-blue);
+            font-size: 1.3rem;
         }
-        .reference-card span {
-            display: block;
-            margin-top: 6px;
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 6px;
             font-size: 0.85rem;
-            color: #aaaaaa;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        /* Right Pane: Three.js Interactive Viewer */
-        #viewer-pane {
-            width: 65%;
-            height: 100%;
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        /* Main App Container */
+        #app-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 56px);
             position: relative;
         }
+
+        /* Left Side: Reference Drawings Panel */
+        #reference-pane {
+            width: 340px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid var(--panel-border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+            z-index: 5;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .section-header h2 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .ref-card {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ref-card:hover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .ref-preview-container {
+            width: 100%;
+            height: 160px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #141721;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .ref-preview-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+        }
+
+        .upload-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .upload-placeholder i {
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .ref-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        /* Right Side: 3D Viewport */
+        #viewer-pane {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 50% 40%, #1e2436 0%, #0f1117 80%);
+        }
+
         #canvas-container {
             width: 100%;
             height: 100%;
         }
-        /* Loading Overlay */
-        #loading-overlay {
+
+        /* Floating Overlays inside 3D Viewport */
+        .viewport-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 20px 40px;
-            border-radius: 8px;
-            font-size: 1.1rem;
+            z-index: 5;
             pointer-events: none;
-            transition: opacity 0.3s ease;
         }
-        /* UI Control Info Overlay */
-        #controls-info {
-            position: absolute;
+
+        .stats-badge {
+            top: 20px;
+            left: 20px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--panel-border);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat-item span {
+            color: var(--text-muted);
+            margin-right: 4px;
+        }
+
+        .stat-item strong {
+            color: var(--accent-blue);
+        }
+
+        .controls-card {
             bottom: 20px;
             right: 20px;
-            background-color: rgba(30, 30, 30, 0.85);
-            backdrop-filter: blur(4px);
-            padding: 12px 16px;
-            border-radius: 6px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--panel-border);
+            padding: 14px 18px;
+            border-radius: 8px;
             font-size: 0.8rem;
-            color: #cccccc;
-            border: 1px solid #444444;
-            pointer-events: none;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .controls-card h4 {
+            color: var(--text-main);
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Loading Spinner Overlay */
+        #loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 17, 23, 0.85);
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 20;
+            transition: opacity 0.4s ease;
+        }
+
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Custom Scrollbar for Reference Pane */
+        #reference-pane::-webkit-scrollbar {
+            width: 6px;
+        }
+        #reference-pane::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
         }
     </style>
 
-    <!-- Import Three.js and ESM dependencies via ES Modules -->
+    <!-- Import Three.js via ES Modules -->
     <script type="importmap">
         {
             "imports": {
@@ -110,153 +300,264 @@
 </head>
 <body>
 
+    <!-- Header Navigation -->
+    <header>
+        <div class="brand">
+            <i class="fa-solid fa-cube"></i>
+            <span>Inspection Studio</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn" onclick="resetCamera()"><i class="fa-solid fa-arrows-to-dot"></i> Reset View</button>
+            <button class="btn btn-primary"><i class="fa-solid fa-download"></i> Export GLB</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
     <div id="app-container">
-        <!-- Reference Drawings Side Panel -->
+        
+        <!-- Left Pane: Interactive Reference Uploads -->
         <div id="reference-pane">
-            <h2>Reference Drawings</h2>
-            <div class="reference-card">
-                <img src="front_reference.png" alt="Front Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Front+View+Reference'">
-                <span>Front View</span>
+            <div class="section-header">
+                <h2>Reference Drawings</h2>
+                <i class="fa-solid fa-images" style="color: var(--text-muted);"></i>
             </div>
-            <div class="reference-card">
-                <img src="side_reference.png" alt="Side Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Side+View+Reference'">
-                <span>Side View</span>
+
+            <!-- Front View Card -->
+            <div class="ref-card" onclick="document.getElementById('file-front').click()">
+                <div class="ref-preview-container">
+                    <div class="upload-placeholder" id="ph-front">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Upload Front View</span>
+                    </div>
+                    <img id="img-front" alt="Front View">
+                </div>
+                <div class="ref-label">Front View</div>
+                <input type="file" id="file-front" accept="image/*" style="display:none" onchange="previewImage(this, 'img-front', 'ph-front')">
             </div>
-            <div class="reference-card">
-                <img src="rear_reference.png" alt="Rear Reference Drawing" onerror="this.src='https://via.placeholder.com/300x300?text=Rear+View+Reference'">
-                <span>Rear View</span>
+
+            <!-- Side View Card -->
+            <div class="ref-card" onclick="document.getElementById('file-side').click()">
+                <div class="ref-preview-container">
+                    <div class="upload-placeholder" id="ph-side">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Upload Side View</span>
+                    </div>
+                    <img id="img-side" alt="Side View">
+                </div>
+                <div class="ref-label">Side View</div>
+                <input type="file" id="file-side" accept="image/*" style="display:none" onchange="previewImage(this, 'img-side', 'ph-side')">
+            </div>
+
+            <!-- Rear View Card -->
+            <div class="ref-card" onclick="document.getElementById('file-rear').click()">
+                <div class="ref-preview-container">
+                    <div class="upload-placeholder" id="ph-rear">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Upload Rear View</span>
+                    </div>
+                    <img id="img-rear" alt="Rear View">
+                </div>
+                <div class="ref-label">Rear View</div>
+                <input type="file" id="file-rear" accept="image/*" style="display:none" onchange="previewImage(this, 'img-rear', 'ph-rear')">
             </div>
         </div>
 
-        <!-- Interactive 3D Canvas -->
+        <!-- Right Pane: Interactive 3D Canvas -->
         <div id="viewer-pane">
-            <div id="canvas-container"></div>
-            <div id="loading-overlay">Loading model: <strong>little_boy_masked.glb</strong>...</div>
-            <div id="controls-info">
-                <strong>Controls:</strong><br>
-                • Rotate/Orbit: Left-Click + Drag<br>
-                • Pan: Right-Click + Drag<br>
-                • Zoom: Scroll Wheel
+            
+            <!-- Live Geometry Stats Overlay -->
+            <div class="viewport-overlay stats-badge">
+                <div class="stat-item"><span>Triangles:</span> <strong id="poly-count">0</strong></div>
+                <div class="stat-item"><span>Vertices:</span> <strong id="vert-count">0</strong></div>
             </div>
+
+            <!-- Control Legend Overlay -->
+            <div class="viewport-overlay controls-card">
+                <h4><i class="fa-solid fa-hand-pointer"></i> Navigation</h4>
+                <div>• <strong>Rotate:</strong> Left Click + Drag</div>
+                <div>• <strong>Pan:</strong> Right Click + Drag</div>
+                <div>• <strong>Zoom:</strong> Scroll Wheel</div>
+            </div>
+
+            <!-- Loading Spinner Screen -->
+            <div id="loading-overlay">
+                <div class="spinner"></div>
+                <div id="loading-text" style="font-size: 0.95rem; color: var(--text-muted);">Parsing geometry...</div>
+            </div>
+
+            <div id="canvas-container"></div>
         </div>
     </div>
 
+    <!-- Three.js Scene Setup & Logic -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // 1. Scene, Camera, Renderer Setup
+        let scene, camera, renderer, controls, loadedModel;
         const container = document.getElementById('canvas-container');
         const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a1a);
+        function init() {
+            // 1. Scene & Renderer Setup
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 1.2, 3.5);
 
-        const camera = new THREE.PerspectiveCamera(
-            45, 
-            container.clientWidth / container.clientHeight, 
-            0.1, 
-            1000
-        );
-        camera.position.set(0, 1.5, 4);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        container.appendChild(renderer.domElement);
+            // 2. Camera Controls (Orbit, Zoom, Pan)
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 + 0.1; // Prevent going below floor level
 
-        // 2. Camera Controls (Orbit, Zoom, Pan enabled)
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.enableZoom = true;   // Zoom
-        controls.enablePan = true;    // Pan
-        controls.enableRotate = true; // Orbit
+            // 3. Studio Lighting Rig
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
 
-        // 3. Lighting Setup
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-        scene.add(ambientLight);
+            // Main Directional Key Light
+            const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+            keyLight.position.set(4, 8, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            keyLight.shadow.bias = -0.0001;
+            scene.add(keyLight);
 
-        const mainLight = new THREE.DirectionalLight(0xffffff, 2.0);
-        mainLight.position.set(5, 10, 7.5);
-        mainLight.castShadow = true;
-        scene.add(mainLight);
+            // Blue Tint Rim Light for Depth
+            const rimLight = new THREE.DirectionalLight(0x3b82f6, 1.5);
+            rimLight.position.set(-5, 4, -5);
+            scene.add(rimLight);
 
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        fillLight.position.set(-5, 0, -5);
-        scene.add(fillLight);
+            // Soft Fill Light
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            fillLight.position.set(-4, 2, 4);
+            scene.add(fillLight);
 
-        // Grid floor helper for spatial orientation
-        const gridHelper = new THREE.GridHelper(10, 10, 0x4da6ff, 0x444444);
-        gridHelper.position.y = -0.01;
-        scene.add(gridHelper);
+            // 4. Subtle Studio Floor Grid
+            const gridHelper = new THREE.GridHelper(10, 20, 0x3b82f6, 0x22293a);
+            gridHelper.position.y = 0;
+            scene.add(gridHelper);
 
-        // 4. Load GLB Mesh Model
-        const loader = new GLTFLoader();
-        const modelPath = 'little_boy_masked.glb'; // Path to target GLB mesh
+            // 5. Load GLB Mesh
+            loadModel('little_boy_masked.glb');
 
-        loader.load(
-            modelPath,
-            (gltf) => {
-                const model = gltf.scene;
+            // 6. Window Resize Handler
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
 
-                // Center and scale mesh automatically
-                const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
+        function loadModel(url) {
+            const loader = new GLTFLoader();
+            loader.load(
+                url,
+                (gltf) => {
+                    if (loadedModel) scene.remove(loadedModel);
+                    
+                    loadedModel = gltf.scene;
+                    
+                    // Enable Shadows on Mesh
+                    let totalVerts = 0;
+                    let totalPolys = 0;
 
-                model.position.x += (model.position.x - center.x);
-                model.position.y += (model.position.y - center.y);
-                model.position.z += (model.position.z - center.z);
+                    loadedModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            if (child.geometry) {
+                                totalVerts += child.geometry.attributes.position.count;
+                                if (child.geometry.index) {
+                                    totalPolys += child.geometry.index.count / 3;
+                                } else {
+                                    totalPolys += child.geometry.attributes.position.count / 3;
+                                }
+                            }
+                        }
+                    });
 
-                // Offset model so it rests on the grid
-                model.position.y += size.y / 2;
+                    // Update UI Stats
+                    document.getElementById('poly-count').innerText = Math.round(totalPolys).toLocaleString();
+                    document.getElementById('vert-count').innerText = Math.round(totalVerts).toLocaleString();
 
-                scene.add(model);
+                    // Center & Scale Model
+                    const box = new THREE.Box3().setFromObject(loadedModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
 
-                // Focus controls target at the model center
-                controls.target.set(0, size.y / 2, 0);
-                controls.update();
+                    loadedModel.position.x -= center.x;
+                    loadedModel.position.y -= box.min.y; // Sit on floor grid
+                    loadedModel.position.z -= center.z;
 
-                // Hide loading overlay
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 300);
-            },
-            (xhr) => {
-                // Loading progress callback
-                if (xhr.lengthComputable) {
-                    const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
-                    loadingOverlay.innerHTML = `Loading model: <strong>little_boy_masked.glb</strong> (${percentComplete}%)`;
+                    scene.add(loadedModel);
+
+                    // Adjust Camera Target
+                    controls.target.set(0, size.y / 2, 0);
+                    controls.update();
+
+                    // Hide Spinner
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => loadingOverlay.style.display = 'none', 400);
+                },
+                (xhr) => {
+                    if (xhr.lengthComputable) {
+                        const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                        loadingText.innerText = `Loading geometry (${percent}%)...`;
+                    }
+                },
+                (error) => {
+                    console.error('Error loading mesh:', error);
+                    loadingText.innerHTML = `<span style="color: #ef4444;">Failed to load model asset</span>`;
                 }
-            },
-            (error) => {
-                console.error('An error occurred while loading the GLB model:', error);
-                loadingOverlay.innerHTML = `<span style="color: #ff4d4d;">Failed to load little_boy_masked.glb</span>`;
-            }
-        );
+            );
+        }
 
-        // 5. Responsive Resize Handling
-        window.addEventListener('resize', () => {
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
-            camera.aspect = width / height;
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
 
-            renderer.setSize(width, height);
-        });
-
-        // 6. Animation / Render Loop
         function animate() {
             requestAnimationFrame(animate);
-            controls.update(); // Required for smooth damping
+            controls.update();
             renderer.render(scene, camera);
         }
 
-        animate();
+        // Global Reset View function attached to window
+        window.resetCamera = function() {
+            camera.position.set(0, 1.2, 3.5);
+            controls.target.set(0, 0.5, 0);
+            controls.update();
+        };
+
+        // Preview local uploads function
+        window.previewImage = function(input, imgId, phId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById(imgId);
+                    const ph = document.getElementById(phId);
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    ph.style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        };
+
+        init();
     </script>
 </body>
 </html>
